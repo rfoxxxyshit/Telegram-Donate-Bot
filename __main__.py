@@ -101,7 +101,7 @@ def target(req: str):
             temp = str()
 
             for symbol in temp_target:
-                if symbol in '1234567890':
+                if symbol in '1234567890.':
                     temp += symbol
 
             return int(temp)
@@ -121,7 +121,7 @@ def collected(req: str):
             temp = str()
 
             for symbol in temp_collected:
-                if symbol in '1234567890':
+                if symbol in '1234567890.':
                     temp += symbol
 
             return int(temp)
