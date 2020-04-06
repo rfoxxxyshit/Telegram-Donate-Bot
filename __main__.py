@@ -90,6 +90,13 @@ def name(req: str):
         return None
 
 
+def remains(tar, coll):
+    try:
+        return int(int(tar) - int(coll))
+    except TypeError:
+        return None
+
+
 def target(req: str):
     for line in req.splitlines():
         if '<span class="CollectionInfoHeader__goal' in line:
@@ -167,6 +174,7 @@ async def text_handler(message: types.Message):
     donationCollected = collected(request)
     donationProgressPercentage = progressPercentage(donationCollected, donationTarget)
     donationProgressBar = progressBar(donationProgressPercentage)
+    donationRemains = remains(donationTarget, donationCollected)
 
     message = str()
 
@@ -177,13 +185,16 @@ async def text_handler(message: types.Message):
         message += f'<b>Организатор сбора:</b> <i>{donationOrganizer}</i>\n'
 
     if donationTarget is not None:
-        message += f'<b>Цель:</b> <i>{donationTarget}₽</i>\n'
+        message += f'<b>Цель:</b> <i>{donationTarget} ₽</i>\n'
 
     if donationCollected is not None:
-        message += f'<b>Собрано:</b> <i>{donationCollected}₽</i>\n\n'
+        message += f'<b>Собрано:</b> <i>{donationCollected} ₽</i>\n'
+
+    if donationRemains is not None:
+        message += f'<b>Осталось:</b> <i>{donationRemains} ₽</i>\n\n'
 
     if donationProgressBar is not None and donationProgressPercentage is not None:
-        message += f'<b>Прогресс:</b>\n<b>{donationProgressBar}</b> {donationProgressPercentage}%\n\n'
+        message += f'<b>Прогресс:</b>\n<b>{donationProgressBar}</b> {donationProgressPercentage} %\n\n'
 
     if donationDescription is not None:
         message += f'<b>Описание:</b>\n<i>{donationDescription}</i>'
