@@ -1,0 +1,4 @@
+*.json
+*.log
+__pycache__
+aiogram_logs
