@@ -2,8 +2,12 @@ import logging
 import hwinfo
 import requests
 import json
+import sys
+from modules.moduleResolver import ModuleResolver
 
 from aiogram import Bot, Dispatcher, executor, types
+
+version = '1.5'
 
 
 def printLogo():
@@ -20,9 +24,22 @@ def printLogo():
     print("\n")
 
 
-hwinfo.tools.clearConsole()
-printLogo()
-print('Starting...')
+def printHelp():
+    return print("Usage: python3 __main__.py (--no-logo) (--not-clear)"
+                 " (--kek) (--minimize) (--help/-h)")
+
+
+if "--not-clear" not in sys.argv:
+    hwinfo.tools.clearConsole()
+if "--no-logo" not in sys.argv:
+    printLogo()
+if "--help" in sys.argv or "-h" in sys.argv:
+    printHelp()
+    exit()
+if "--minimize" not in sys.argv:
+    print('Staring Telegram Donate Bot v{}'.format(version))
+else:
+    print('Starting...')
 
 
 def percentStyleConfigurator():
@@ -38,10 +55,33 @@ def percentStyleConfigurator():
             if style == '':
                 style = '1'
                 break
-            print('Пожалуйста, выберите между 1 и 2\n')
+            print('Пожалуйста, выберите стиль.\n')
         else:
             break
     return style
+
+
+def donateModuleConfigurator():
+    hwinfo.tools.clearConsole()
+    printLogo()
+    donate_modules = ['Tinkoff']
+    moduleList = ""
+    for i in range(len(donate_modules)):
+        moduleList += "{}. {}\n".format(i+1, donate_modules[i])
+    while True:
+        module = input('Выберите модуль для приема донатов.\n\n'
+                       f'{moduleList}'
+                       'Выбор (1): ').strip()
+
+        if module not in (range(len(donate_modules) + 1)):
+            if module == '':
+                module = '1'
+                break
+            print('Пожалуйста, выберите модуль.\n')
+        else:
+            break
+    moduleSelected = int(module) - 1
+    return donate_modules[moduleSelected].lower()
 
 
 def configurator():
@@ -49,6 +89,10 @@ def configurator():
     printLogo()
 
     Token = input('Пожалуйста, введите токен бота: ').strip()
+    hwinfo.tools.clearConsole()
+    printLogo()
+
+    module = donateModuleConfigurator()
     hwinfo.tools.clearConsole()
     printLogo()
 
@@ -70,10 +114,15 @@ def configurator():
         json.dump({'botToken': Token,
                    'donationLink': Link,
                    'buttonText': Text,
-                   'progressBar': style}, file, indent=4)
+                   'progressBar': style,
+                   'using_module': module}, file, indent=4)
 
     print('Настройка завершена. Пожалуйста, перезагрузите скрипт.')
     exit(0)
+
+
+if "--configurator" in sys.argv:
+    configurator()
 
 
 try:
@@ -83,7 +132,29 @@ try:
     botToken = config['botToken']
     donationLink = config['donationLink']
     buttonText = config['buttonText']
-    progress_style = config['progressBar']
+    progress_style = config.get('progressBar')
+    using_module = config.get('using_module')
+    if not using_module or not progress_style:
+        while True:
+            update = input("WARNING! Ваш конфиг устарел. "
+                           "Вы хотите обновить его? (y/N): ")
+            if update.lower() in ('y', 'yes', 'да'):
+                configurator()
+                break
+            else:
+                print("Обновление не запущено. Будут использованы "
+                      "нативные настройки.")
+                if not using_module:
+                    using_module = 'tinkoff'
+                if not progress_style:
+                    progress_style = '1'
+                break
+    resolve = ModuleResolver(using_module)
+    if "--minimize" not in sys.argv:
+        print('Using module \"{}\"'.format(using_module).title())
+        print('Progress style: {}'.format(
+            'Windows 95' if progress_style == '1' else "Modern" if progress_style == '2' else "Linux"  # noqa
+        ))
 except (KeyError, FileNotFoundError, json.decoder.JSONDecodeError):
     configurator()
     botToken = 'pep8 иди нахуй'
@@ -95,93 +166,10 @@ bot = Bot(token=botToken)
 dp = Dispatcher(bot)
 
 
-def organizer(req: str):
-    for line in req.splitlines():
-        if 'organizerName' in line:
-            return line.split(
-                'organizerName'
-            )[1].split(''
-                       '"CrowdPage">'
-                       )[1].split(
-                '</span>')[0]
-
-        else:
-            continue
-    else:
-        return None
-
-
-def description(req: str):
-    for line in req.splitlines():
-        if 'CollectMoneyPayForm__description' in line:
-            return line.split(
-                'CollectMoneyPayForm__description'
-            )[1].split(
-                '"CollectMoneyPayForm">'
-            )[1].split('</span>')[0]
-        else:
-            continue
-    else:
-        return None
-
-
-def name(req: str):
-    for line in req.splitlines():
-        if '<meta property="og:title" content="' in line:
-            return line.split(
-                '<meta property="og:title" content="'
-            )[1].split('"')[0]
-        else:
-            continue
-    else:
-        return None
-
-
 def remains(tar, coll):
     try:
         return int(int(tar) - int(coll))
     except TypeError:
-        return None
-
-
-def target(req: str):
-    for line in req.splitlines():
-        if '<span class="CollectionInfoHeader__goal' in line:
-            temp_target = line.split(
-                '<span class="CollectionInfoHeader__goal'
-            )[1].split(
-                '"CollectionInfoHeader">Цель: '
-            )[1].split(' ₽</span>')[0]
-            temp = str()
-
-            for symbol in temp_target:
-                if symbol in '1234567890,.':
-                    temp += symbol
-
-            return int(float(temp.replace(',', '.')))
-        else:
-            continue
-    else:
-        return None
-
-
-def collected(req: str):
-    for line in req.splitlines():
-        if 'class="CollectionInfoHeader__percents' in line:
-            temp_collected = line.split(
-                '"CollectionInfoHeader">Собрано: '
-            )[1].split(' ₽</span>')[0]
-
-            temp = str()
-
-            for symbol in temp_collected:
-                if symbol in '1234567890,.':
-                    temp += symbol
-
-            return int(float(temp.replace(',', '.')))
-        else:
-            continue
-    else:
         return None
 
 
@@ -231,45 +219,107 @@ async def text_handler(message: types.Message):
 
     tempMessage = await message.reply('<i>Загрузка...</i>', parse_mode='html')
 
-    request = requests.get(donationLink).text
+    try:
+        request = requests.get(donationLink).text
 
-    donationName = name(request)
-    donationOrganizer = organizer(request)
-    donationDescription = description(request)
-    donationTarget = target(request)
-    donationCollected = collected(request)
-    donationProgressPercentage = progressPercentage(donationCollected,
-                                                    donationTarget)
-    donationProgressBar = progressBar(donationProgressPercentage)
-    donationRemains = remains(donationTarget, donationCollected)
+        donationName = resolve.name(request)
+        donationOrganizer = resolve.organizer(request)
+        donationDescription = resolve.description(request)
+        donationTarget = resolve.target(request)
+        donationCollected = resolve.collected(request)
+        donationProgressPercentage = progressPercentage(donationCollected,
+                                                        donationTarget)
+        donationProgressBar = progressBar(donationProgressPercentage)
+        donationRemains = remains(donationTarget, donationCollected)
 
-    message = str()
+        message = str()
 
-    if donationName is not None:
-        message += f'<b>{donationName}</b>\n\n'
+        if donationName is not None:
+            message += f'<b>{donationName}</b>\n\n'
 
-    if donationOrganizer is not None:
-        message += f'<b>Организатор сбора:</b> <i>{donationOrganizer}</i>\n'
+        if donationOrganizer is not None:
+            message += f'<b>Организатор сбора:</b> <i>{donationOrganizer}</i>\n'  # noqa
 
-    if donationTarget is not None:
-        message += f'<b>Цель:</b> <i>{donationTarget} ₽</i>\n'
+        if donationTarget is not None:
+            message += f'<b>Цель:</b> <i>{donationTarget} ₽</i>\n'
 
-    if donationCollected is not None:
-        message += f'<b>Собрано:</b> <i>{donationCollected} ₽</i>\n'
+        if donationCollected is not None:
+            message += f'<b>Собрано:</b> <i>{donationCollected} ₽</i>\n'
 
-    if donationRemains is not None:
-        message += f'<b>Осталось:</b> <i>{donationRemains} ₽</i>\n\n'
+        if donationRemains is not None:
+            message += f'<b>Осталось:</b> <i>{donationRemains} ₽</i>\n\n'
 
-    if donationProgressBar is not None and donationProgressPercentage is not None:  # noqa
-        message += f'<b>Прогресс:</b>\n<b>{donationProgressBar}</b> {donationProgressPercentage} %\n\n'  # noqa
+        if donationProgressBar is not None and donationProgressPercentage is not None:  # noqa
+            message += f'<b>Прогресс:</b>\n<b>{donationProgressBar}</b> {donationProgressPercentage} %\n\n'  # noqa
 
-    if donationDescription is not None:
-        message += f'<b>Описание:</b>\n<i>{donationDescription}</i>'
+        if donationDescription is not None:
+            message += f'<b>Описание:</b>\n<i>{donationDescription}</i>'
 
-    return await tempMessage.edit_text(message, parse_mode='html',
-                                       reply_markup=inline_kb_full)
+        return await tempMessage.edit_text(message, parse_mode='html',
+                                           reply_markup=inline_kb_full)
+    except Exception as e:
+        return await tempMessage.edit_text(
+            '<b>Произошла ошибка:</b> <code>{}</code>'.format(str(e)),
+            parse_mode="html"
+        )
 
 
 if __name__ == '__main__':
+    if '--kek' in sys.argv:
+        print("""[Интро]
+Sayonara boy
+Sayonara boy
+
+[Припев]
+Детка, ты любишь рваные джинсы
+О-о-о-о-о-очень рваные джинсы
+Детка, ты любишь рваные джинсы
+О-о-о-о-о-очень рваные джинсы
+
+[Куплет 1]
+Бейбе, твои глаза, твои дреды
+Люди вокруг нас — всего лишь скелеты
+Я хочу тебя даже одетой
+Быть такими-такими-такими как мы — под запретом
+В твоем лофте, ты-ты-ты-ты в моей кофте
+Фотки-фотки-фотки-фотки-фотки если мы на тусовке
+Любимые кроссовки топчут с тобою вместе
+Мы жуем мятную жовку под одну из моих песен
+
+[Припев 2]
+Детка, ты любишь рваные джинсы
+О-о-о-о-о-очень рваные джинсы
+Детка, ты любишь рваные джинсы
+О-о-о-о-о-очень рваные джинсы
+О-о-о-о-о, о-о-о!
+О-о-о-о-о-очень рваные джинсы
+О-о-о-о-о, о-о-о!
+
+[Куплет 2]
+Девочка — чупа-чупс, перегазировка чувств
+Я торчу на тебе, ведь я этого хочу
+И ты тоже (тоже, тоже)
+Бегут мурашки по коже (коже, коже)
+Глаза-стекляшки
+В стакане газировка с ягодным сиропом
+У нас передозировка, не звоните копам
+В стакане газировка с ягодным сиропом
+У нас передозировка, не звоните копам
+
+[Припев 2]
+Детка, ты любишь рваные джинсы
+О-о-о-о-о-очень рваные джинсы
+Детка, ты любишь рваные джинсы
+О-о-о-о-о-очень рваные джинсы
+О-о-о-о-о, о-о-о!
+О-о-о-о-о, очень рваные джинсы
+О-о-о-о-о, о-о-о!
+
+[Аутро]
+Sayonara boy-boy-boy-boy-boy
+Sayonara boy""")
+    skip_updates = False
+    if "--skip" in sys.argv:
+        skip_updates = True
     print('Started!')
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=skip_updates)
