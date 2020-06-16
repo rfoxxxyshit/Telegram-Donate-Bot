@@ -1,4 +1,7 @@
 class Tinkoff:
+    def __init__(self):
+        """Tinkoff module"""
+
     def organizer(self, req: str):
         for line in req.splitlines():
             if 'organizerName' in line:

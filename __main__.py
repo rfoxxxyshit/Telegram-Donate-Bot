@@ -1,16 +1,35 @@
-import logging
-import hwinfo
-import requests
-import json
-import sys
-from modules.moduleResolver import ModuleResolver
+import sys  # noqa
+if sys.version_info < (3, 8, 0):
+    print("Ваша версия Python ниже минимально-поддерживаемой(3.8.0)")
+    exit(1)
+def printHelp():
+    return print("Usage: python3 __main__.py (--no-logo) (--not-clear)"
+                 " (--kek) (--minimize) (--help/-h)")
+if "--help" in sys.argv or "-h" in sys.argv:
+    printHelp()
+    exit()
 
-from aiogram import Bot, Dispatcher, executor, types
+print("Loading...")
+from time import sleep  # noqa
+sleep(0.2)
+import logging  # noqa
+import requests  # noqa
+import json  # noqa
 
-version = '1.5'
+print("Preparing modules resolver...")
+from modules.moduleResolver import ModuleResolver  # noqa
+print("Modules resolver loaded.")
+print("Preparing hwinfo...")
+import hwinfo  # noqa
+print("hwinfo loaded.")
+print("Preparing to start...")
+
+from aiogram import Bot, Dispatcher, executor, types  # noqa
+
+version = '1.7'
 
 
-def printLogo():
+def print_logo():
     print("  __      __                      ")
     print(" / /____ / /__ ___ ________ ___ _ ")
     print("/ __/ -_) / -_) _ `/ __/ _ `/  ' \\")
@@ -24,28 +43,22 @@ def printLogo():
     print("\n")
 
 
-def printHelp():
-    return print("Usage: python3 __main__.py (--no-logo) (--not-clear)"
-                 " (--kek) (--minimize) (--help/-h)")
-
-
 if "--not-clear" not in sys.argv:
     hwinfo.tools.clearConsole()
 if "--no-logo" not in sys.argv:
-    printLogo()
-if "--help" in sys.argv or "-h" in sys.argv:
-    printHelp()
-    exit()
+    print_logo()
 if "--minimize" not in sys.argv:
-    print('Staring Telegram Donate Bot v{}'.format(version))
+    print('Starting Telegram Donate Bot v{}'.format(version))
 else:
     print('Starting...')
 
 
-def percentStyleConfigurator():
+def percent_style_configurator():
     hwinfo.tools.clearConsole()
-    printLogo()
+    print_logo()
     while True:
+        hwinfo.tools.clearConsole()
+        print_logo()
         style = input('Выберите стиль прогресса сбора.\n\n'
                       '1. Windows 95 (█░░░░)\n'
                       '2. Modern (▰▱▱▱▱)\n'
@@ -55,29 +68,38 @@ def percentStyleConfigurator():
             if style == '':
                 style = '1'
                 break
-            print('Пожалуйста, выберите стиль.\n')
+            continue
         else:
             break
     return style
 
 
-def donateModuleConfigurator():
+def donate_module_configurator():
     hwinfo.tools.clearConsole()
-    printLogo()
+    print_logo()
     donate_modules = ['Tinkoff']
-    moduleList = ""
-    for i in range(len(donate_modules)):
-        moduleList += "{}. {}\n".format(i+1, donate_modules[i])
+    module_list = ""
+    i = 0
+    for module in donate_modules:
+        i += 1
+        module_list += "{}. {}\n".format(i, module)
     while True:
+        hwinfo.tools.clearConsole()
+        print_logo()
         module = input('Выберите модуль для приема донатов.\n\n'
-                       f'{moduleList}'
+                       f'{module_list}'
                        'Выбор (1): ').strip()
 
-        if module not in (range(len(donate_modules) + 1)):
-            if module == '':
+        try:
+            int(module)
+        except ValueError:
+            if module == "":
                 module = '1'
                 break
-            print('Пожалуйста, выберите модуль.\n')
+            continue
+
+        if int(module) not in (range(len(donate_modules) + 1)):
+            continue
         else:
             break
     moduleSelected = int(module) - 1
@@ -85,37 +107,52 @@ def donateModuleConfigurator():
 
 
 def configurator():
+    while True:
+        hwinfo.tools.clearConsole()
+        print_logo()
+        Token = input('Пожалуйста, введите токен бота: ').strip()
+        if Token == "":
+            continue
+        else:
+            break
     hwinfo.tools.clearConsole()
-    printLogo()
+    print_logo()
 
-    Token = input('Пожалуйста, введите токен бота: ').strip()
-    hwinfo.tools.clearConsole()
-    printLogo()
+    module = donate_module_configurator()
 
-    module = donateModuleConfigurator()
-    hwinfo.tools.clearConsole()
-    printLogo()
+    while True:
+        hwinfo.tools.clearConsole()
+        print_logo()
+        Link = input('Пожалуйста, введите ссылку на сбор: ').strip()
+        if "http://" not in Link and "https://" not in Link:
+            continue
+        else:
+            break
 
-    Link = input('Пожалуйста, введите ссылку на сбор: ').strip()
+    while True:
+        hwinfo.tools.clearConsole()
+        print_logo()
+        Text = input('Пожалуйста, введите текст для кнопки: ').strip()
+        if Text == "":
+            continue
+        else:
+            break
     hwinfo.tools.clearConsole()
-    printLogo()
+    print_logo()
 
-    Text = input('Пожалуйста, введите текст для кнопки: ').strip()
+    style = percent_style_configurator()
     hwinfo.tools.clearConsole()
-    printLogo()
-
-    style = percentStyleConfigurator()
-    hwinfo.tools.clearConsole()
-    printLogo()
+    print_logo()
 
     print('Подождите, идет настройка...')
 
     with open('config.json', 'w') as file:
-        json.dump({'botToken': Token,
-                   'donationLink': Link,
-                   'buttonText': Text,
-                   'progressBar': style,
+        json.dump({'bot_token': Token,
+                   'donation_link': Link,
+                   'button_text': Text,
+                   'progress_bar': style,
                    'using_module': module}, file, indent=4)
+    sleep(0.5)
 
     print('Настройка завершена. Пожалуйста, перезагрузите скрипт.')
     exit(0)
@@ -129,16 +166,16 @@ try:
     with open('config.json', 'r') as f:
         config = json.loads(f.read())
 
-    botToken = config['botToken']
-    donationLink = config['donationLink']
-    buttonText = config['buttonText']
-    progress_style = config.get('progressBar')
+    bot_token = config['bot_token']
+    donation_link = config['donation_link']
+    button_text = config['button_text']
+    progress_style = config.get('progress_bar')
     using_module = config.get('using_module')
     if not using_module or not progress_style:
         while True:
             update = input("WARNING! Ваш конфиг устарел. "
                            "Вы хотите обновить его? (y/N): ")
-            if update.lower() in ('y', 'yes', 'да'):
+            if update.lower() in ('y', 'yes', 'да', 'д'):
                 configurator()
                 break
             else:
@@ -157,11 +194,11 @@ try:
         ))
 except (KeyError, FileNotFoundError, json.decoder.JSONDecodeError):
     configurator()
-    botToken = 'pep8 иди нахуй'
+    bot_token = 'pep8 иди нахуй'
 
-logging.basicConfig(level=logging.INFO, filename='aiogram_logs')
+logging.basicConfig(level=logging.INFO, filename='aiogram_logs.log')
 
-bot = Bot(token=botToken)
+bot = Bot(token=bot_token)
 
 dp = Dispatcher(bot)
 
@@ -173,36 +210,41 @@ def remains(tar, coll):
         return None
 
 
-def progressPercentage(collect, targ):
+def progress_percentage(collect, targ):
     try:
         return round(collect / targ * 100)
     except TypeError:
         return None
 
 
-def progressBar(progressPercent):
+def progress_bar(progress_percent, progress_style):
     try:
-        if progress_style == '1':
-            progressBar_icon_empty = '░'
-            progressBar_icon_full = '█'
-            progressBar_container = None
-        elif progress_style == '2':
-            progressBar_icon_empty = '▱'
-            progressBar_icon_full = '▰'
-            progressBar_container = '[]'
+        full_icons = {
+            "1": "█",
+            "2": "▰",
+            "linux": "#"
+        }
+        empty_icons = {
+            "1": "░",
+            "2": "▱",
+            "linux": "-"
+        }
+        containers = {
+            "1": None,
+            "2": "[]",
+            "linux": "[]"
+        }
+        if progress_style not in ("1", "2"):
+            progress_style = "linux"
+        if progress_percent >= 100:
+            return full_icons[progress_style] * 20
         else:
-            progressBar_icon_empty = '-'
-            progressBar_icon_full = '#'
-            progressBar_container = '[]'
-        if progressPercent >= 100:
-            return progressBar_icon_full * 20
-        else:
-            collect = (round(progressPercent / 5)) * progressBar_icon_full
-            residual = (20 - len(collect)) * progressBar_icon_empty
-            if progressBar_container is not None:
+            collect = (round(progress_percent / 5)) * full_icons[progress_style]
+            residual = (20 - len(collect)) * empty_icons[progress_style]
+            if containers[progress_style] is not None:
                 return "{}{}".format(collect,
                                      residual).join(
-                                         progressBar_container
+                                         containers[progress_style]
                                      )
             else:
                 return collect + residual
@@ -215,50 +257,52 @@ def progressBar(progressPercent):
 async def text_handler(message: types.Message):
     inline_kb_full = types.InlineKeyboardMarkup(row_width=1)
     inline_kb_full.add(
-        types.InlineKeyboardButton(buttonText, url=donationLink))
+        types.InlineKeyboardButton(button_text, url=donation_link))
 
-    tempMessage = await message.reply('<i>Загрузка...</i>', parse_mode='html')
+    temp_message = await message.reply('<i>Загрузка...</i>',
+                                       parse_mode='html')
 
     try:
-        request = requests.get(donationLink).text
+        request = requests.get(donation_link).text
 
-        donationName = resolve.name(request)
-        donationOrganizer = resolve.organizer(request)
-        donationDescription = resolve.description(request)
-        donationTarget = resolve.target(request)
-        donationCollected = resolve.collected(request)
-        donationProgressPercentage = progressPercentage(donationCollected,
-                                                        donationTarget)
-        donationProgressBar = progressBar(donationProgressPercentage)
-        donationRemains = remains(donationTarget, donationCollected)
+        donation_name = resolve.name(request)
+        donation_organizer = resolve.organizer(request)
+        donation_description = resolve.description(request)
+        donation_target = resolve.target(request)
+        donation_collected = resolve.collected(request)
+        donation_progress_percentage = progress_percentage(donation_collected,
+                                                           donation_target)
+        donation_progress_bar = progress_bar(donation_progress_percentage,
+                                             progress_style)
+        donation_remains = remains(donation_target, donation_collected)
 
         message = str()
 
-        if donationName is not None:
-            message += f'<b>{donationName}</b>\n\n'
+        if donation_name is not None:
+            message += f'<b>{donation_name}</b>\n\n'
 
-        if donationOrganizer is not None:
-            message += f'<b>Организатор сбора:</b> <i>{donationOrganizer}</i>\n'  # noqa
+        if donation_organizer is not None:
+            message += f'<b>Организатор сбора:</b> <i>{donation_organizer}</i>\n'  # noqa
 
-        if donationTarget is not None:
-            message += f'<b>Цель:</b> <i>{donationTarget} ₽</i>\n'
+        if donation_target is not None:
+            message += f'<b>Цель:</b> <i>{donation_target} ₽</i>\n'
 
-        if donationCollected is not None:
-            message += f'<b>Собрано:</b> <i>{donationCollected} ₽</i>\n'
+        if donation_collected is not None:
+            message += f'<b>Собрано:</b> <i>{donation_collected} ₽</i>\n'
 
-        if donationRemains is not None:
-            message += f'<b>Осталось:</b> <i>{donationRemains} ₽</i>\n\n'
+        if donation_remains is not None:
+            message += f'<b>Осталось:</b> <i>{donation_remains} ₽</i>\n\n'
 
-        if donationProgressBar is not None and donationProgressPercentage is not None:  # noqa
-            message += f'<b>Прогресс:</b>\n<b>{donationProgressBar}</b> {donationProgressPercentage} %\n\n'  # noqa
+        if donation_progress_bar is not None and donation_progress_percentage is not None:  # noqa
+            message += f'<b>Прогресс:</b>\n<b>{donation_progress_bar}</b> {donation_progress_percentage} %\n\n'  # noqa
 
-        if donationDescription is not None:
-            message += f'<b>Описание:</b>\n<i>{donationDescription}</i>'
+        if donation_description is not None:
+            message += f'<b>Описание:</b>\n<i>{donation_description}</i>'
 
-        return await tempMessage.edit_text(message, parse_mode='html',
+        return await temp_message.edit_text(message, parse_mode='html',
                                            reply_markup=inline_kb_full)
     except Exception as e:
-        return await tempMessage.edit_text(
+        return await temp_message.edit_text(
             '<b>Произошла ошибка:</b> <code>{}</code>'.format(str(e)),
             parse_mode="html"
         )

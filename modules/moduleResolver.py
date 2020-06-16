@@ -1,9 +1,12 @@
 from . import tinkoff
+print("Preparing module Tinkoff...")
 tinkoff = tinkoff.Tinkoff()
+print("Tinkoff module loaded.")
 
 
 class ModuleResolver:
     def __init__(self, using_module: str):
+        """Module resolver"""
         self.mod = using_module
 
     def organizer(self, req: str):
