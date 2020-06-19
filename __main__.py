@@ -15,6 +15,7 @@ sleep(0.2)
 import logging  # noqa
 import requests  # noqa
 import json  # noqa
+import git
 
 print("Preparing modules resolver...")
 from modules.moduleResolver import ModuleResolver  # noqa
@@ -26,7 +27,7 @@ print("Preparing to start...")
 
 from aiogram import Bot, Dispatcher, executor, types  # noqa
 
-version = '1.7'
+version = '1.8'
 
 
 def print_logo():
@@ -43,10 +44,49 @@ def print_logo():
     print("\n")
 
 
-if "--not-clear" not in sys.argv:
-    hwinfo.tools.clearConsole()
-if "--no-logo" not in sys.argv:
-    print_logo()
+def updater():
+    if "--not-clear" not in sys.argv:
+        hwinfo.tools.clearConsole()
+    if "--no-logo" not in sys.argv:
+        print_logo()
+    try:
+        repo = git.Repo("./")
+    except git.exc.InvalidGitRepositoryError:
+        print("ОШИБКА: Не найдена директория \".git\". OTA обновления работать не будут.")  # noqa: e501
+        return
+    try:
+        print("Проверяю обновления...")
+        fetch = repo.remotes.origin.fetch()[0]
+        git_message = fetch.commit.message
+        commit_author = fetch.commit.author.name
+        commit_hash = repo.git.rev_parse(fetch.commit.hexsha, short=6)  # noqa: e501
+        local_repo_hash = repo.git.rev_parse(repo.head.object.hexsha, short=6)  # noqa: e501
+    except git.exc.GitCommandError:
+        print("ОШИБКА: Произошла ошибка при проверке обновлений.")
+    if commit_hash == local_repo_hash:
+        print("Обновления не найдены.")
+        return
+    else:
+        print("Найдено обновление!\n\nСписок изменений:\n{}\nВыпустил обновление: {}".format(  # noqa: e501
+            git_message,
+            commit_author
+        ))
+        want_update = input("\nЖелаете обновиться? (y/N): ")
+        if want_update.lower() in ("y", "yes", "д", "да"):
+            if "--not-clear" not in sys.argv:
+                hwinfo.tools.clearConsole()
+            if "--no-logo" not in sys.argv:
+                print_logo()
+            print("Обновляю...")
+            repo.remotes.origin.pull()
+            print("Успешно обновлено. Необходимо перезапустить скрипт.")
+            exit(0)
+        else:
+            print("Обновление не запущено.")
+        return
+
+
+updater()
 if "--minimize" not in sys.argv:
     print('Starting Telegram Donate Bot v{}'.format(version))
 else:
