@@ -1,4 +1,4 @@
 psutil
 speedtest-cli
 aiogram
-git
+gitpython
