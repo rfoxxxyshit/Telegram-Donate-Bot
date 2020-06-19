@@ -1,3 +1,4 @@
 psutil
 speedtest-cli
 aiogram
+git
